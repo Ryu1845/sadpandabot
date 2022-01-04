@@ -15,6 +15,7 @@ RUN \
     py3-pip \
     py3-pillow \
     py3-requests \
+    py3-aiohttp \
     py3-beautifulsoup4 \
     py3-cryptography \
     py3-matrix-nio \

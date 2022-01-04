@@ -1,6 +1,8 @@
 import datetime
 import os
 
+import aiohttp
+import asyncio
 import simplematrixbotlib as botlib
 from bs4 import BeautifulSoup
 
@@ -26,11 +28,21 @@ G_CATEGORY = {
 }
 
 
+async def fetch_img(session, url):
+    filename = "/tmp/" + url.split("/")[-1]
+    timeout = aiohttp.ClientTimeout(total=60)
+    async with session.get(url, timeout=timeout) as response:
+        assert response.status == 200
+        img = await response.read()
+    with open(filename, "wb") as img_io:
+        img_io.write(img)
+    return filename
+
+
 @bot.listener.on_startup
-async def on_ready():
-    print("Logged in as " + bot.creds.username)
+async def on_ready(room_id):
     print("------")
-    print("Successfully logged in and booted...!")
+    print(f"Successfully logged in and booted in {room_id}...!")
 
 
 @bot.listener.on_message_event
@@ -42,14 +54,18 @@ async def on_message(room, message):
 
 # search for EH links and post their metadata
 async def parse_exlinks(message, room):
-    galleries = ehapi.get_galleries(message.content)
+    galleries = ehapi.get_galleries(message.body)
     if galleries:
         logger(message, ", ".join([gallery["token"] for gallery in galleries]))
         if len(galleries) > 5:  # don't spam chat too much if user spams links
             await bot.api.send_text_message(room.room_id, embed_titles(galleries))
         else:
             for gallery in galleries:
-                await bot.api.send_text_message(room.room_id, embed_full(gallery))
+                loop = asyncio.get_event_loop()
+                async with aiohttp.ClientSession(loop=loop) as session:
+                    img_fn = await fetch_img(session, gallery["thumb"])
+                await bot.api.send_image_message(room.room_id, img_fn)
+                await bot.api.send_markdown_message(room.room_id, embed_full(gallery))
 
 
 # string of titles for lots of links
@@ -66,16 +82,18 @@ def embed_titles(exmetas):
 
 # pretty discord embeds for small amount of links
 def embed_full(exmeta):
-    title = (BeautifulSoup(exmeta["title"], "html.parser").string,)
-    url = (create_ex_url(exmeta["gid"], exmeta["token"]),)
-    timestamp = (datetime.datetime.utcfromtimestamp(int(exmeta["posted"])),)
-    description = (BeautifulSoup(exmeta["title_jpn"], "html.parser").string,)
+    title = BeautifulSoup(exmeta["title"], "html.parser").string
+    url = create_ex_url(exmeta["gid"], exmeta["token"])
+    timestamp = datetime.datetime.utcfromtimestamp(int(exmeta["posted"]))
+    description = BeautifulSoup(exmeta["title_jpn"], "html.parser").string
     # em.set_image(url=exmeta["thumb"]) # TODO find a way to send those images
     # em.set_thumbnail(url=G_CATEGORY[exmeta["category"]])
     # em.set_footer(text=exmeta["filecount"] + " pages")
     # em.add_field(name="rating", value=exmeta["rating"])
     # em = process_tags(em, exmeta["tags"])
-    formatted_str = f"__**[{title}]({url})**__\n*{timestamp}*\n{description}"
+    formatted_str = (
+        f"__**[{title}]({url})**__\n*{timestamp}*\n{description if description else ''}"
+    )
     formatted_str = process_tags(formatted_str, exmeta["tags"])
     return formatted_str
 
@@ -93,16 +111,11 @@ def process_tags(formatted_str, tags):
         else:
             tag_dict["misc"].append(tag)
 
-    def add_field(ex_tag):
+    for ex_tag in tag_dict:
         if tag_dict[ex_tag]:
-            return formatted_str + f'\n**{ex_tag}**\n{", ".join(tag_dict[ex_tag])}"'
-        return ""
+            tags = f'\n**{ex_tag}**\n{", ".join(tag_dict[ex_tag])}'
+            formatted_str += tags
 
-    formatted_str = add_field("male")
-    formatted_str = add_field("female")
-    formatted_str = add_field("parody")
-    formatted_str = add_field("character")
-    formatted_str = add_field("misc")
     return formatted_str
 
 
