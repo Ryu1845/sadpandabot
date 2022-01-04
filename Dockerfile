@@ -1,31 +1,9 @@
-FROM alpine:3.14
+FROM python:latest
 
 WORKDIR /app
-COPY requirements.txt /app/requirements.txt
+COPY . /app/
 
 # build dependencies
-RUN \
-    apk add --no-cache --update \
-    ca-certificates \
-    g++ \
-    gcc \
-    git \
-    linux-headers \
-    python3 \
-    py3-pip \
-    py3-pillow \
-    py3-requests \
-    py3-aiohttp \
-    py3-beautifulsoup4 \
-    py3-cryptography \
-    py3-matrix-nio \
-    py3-markdown \
-    py3-toml \
-    make && \
-    pip install simplematrixbotlib -U && \
-    # cleanup
-    rm -rf \
-    /tmp/*
+RUN python -m pip install -U pip && python -m pip install -r requirements.txt
 
-COPY . /app/
-CMD ["python3", "-u", "sadpandabot.py"]
+CMD ["python", "-u", "sadpandabot.py"]

@@ -65,6 +65,7 @@ async def parse_exlinks(message, room):
                 async with aiohttp.ClientSession(loop=loop) as session:
                     img_fn = await fetch_img(session, gallery["thumb"])
                 await bot.api.send_image_message(room.room_id, img_fn)
+                os.remove(img_fn)
                 await bot.api.send_markdown_message(room.room_id, embed_full(gallery))
 
 
