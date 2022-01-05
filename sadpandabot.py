@@ -8,10 +8,12 @@ from bs4 import BeautifulSoup
 
 import ehapi
 
+config = botlib.Config()
+config.join_on_invite = True
 creds = botlib.Creds(
     os.environ["HOMESERVER"], os.environ["USERNAME"], os.environ["PASSWORD"]
 )
-bot = botlib.Bot(creds)
+bot = botlib.Bot(creds, config=config)
 PREFIX = "!"
 BASE = "https://cdn.discordapp.com/attachments/306823976615936002/"
 G_CATEGORY = {
