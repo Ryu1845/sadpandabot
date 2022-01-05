@@ -14,6 +14,7 @@ creds = botlib.Creds(
     os.environ["HOMESERVER"], os.environ["USERNAME"], os.environ["PASSWORD"]
 )
 bot = botlib.Bot(creds, config=config)
+bot._need_allow_homeserver_users = True
 PREFIX = "!"
 BASE = "https://cdn.discordapp.com/attachments/306823976615936002/"
 G_CATEGORY = {
