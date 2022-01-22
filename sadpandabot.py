@@ -51,7 +51,9 @@ async def on_ready(room_id):
 @bot.listener.on_message_event
 async def on_message(room, message):
     match = botlib.MessageMatch(room, message, bot, PREFIX)
-    if match.is_not_from_this_bot():
+    if match.is_not_from_this_bot() and not message.flattened().get(
+        "content.m.relates_to.m.in_reply_to.event_id", False
+    ):
         await parse_exlinks(message, room)
 
 
